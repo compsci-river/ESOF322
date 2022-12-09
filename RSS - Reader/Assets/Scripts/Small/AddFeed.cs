@@ -25,13 +25,8 @@ public class AddFeed : MonoBehaviour
         manager.SearchForNewFeed();
     }
 
-    public void Add()
+    public void ToggleErrorCheck()
     {
-
-    }
-
-    public void Cancel()
-    {
-
+        manager.ToggleErrorCheck();
     }
 }

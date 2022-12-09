@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 using System.Net;
 using System.Xml;
+using System.Text.RegularExpressions;
 
 public class Thread
 {
@@ -19,7 +20,57 @@ public class Thread
     {
         rssLink = _rssLink;
 
-        initialize();
+        
+    }
+
+    public bool CreateThread()
+    {
+        WebClient client = new WebClient();
+        string downloadString = "";
+        try
+        {
+            downloadString = client.DownloadString(rssLink);
+        }
+        catch
+        {
+            return false;
+        }
+        tempSave = downloadString;
+        XmlDocument doc = new XmlDocument();
+        try
+        {
+            doc.LoadXml(downloadString);
+        }
+        catch
+        {
+            return false;
+        }
+
+        if (doc.GetElementsByTagName("rss").Count == 0)
+        {
+            return false;
+        }
+
+        title = doc.GetElementsByTagName("title")[0].InnerText;
+        datetime = DateTime.Parse(doc.GetElementsByTagName("pubDate")[0].InnerText).AddDays(-2);
+
+        threadLink = SetThreadLink();
+        return true;
+    }
+
+    private string SetThreadLink()
+    {
+        string pattern = ".rss?";
+        string replace = "";
+
+        Regex rgx = new Regex(pattern);
+        string result = rgx.Replace(rssLink, replace);
+
+        pattern = ".rss";
+        rgx = new Regex(pattern);
+        result = rgx.Replace(result, replace);
+
+        return result;
     }
 
     public Thread(ThreadSave save)
@@ -84,7 +135,7 @@ public class Thread
 
             DateTime pubdate = DateTime.Parse(doc.GetElementsByTagName("pubDate")[0].InnerText);
 
-            if (pubdate != datetime)
+            if (DateTime.Compare(datetime, pubdate) < 0)
             {
                 getUpdates(doc);
             }
@@ -112,7 +163,7 @@ public class Thread
             DateTime date = DateTime.Parse(work.InnerText);
             work = work.NextSibling;
             string _link = work.InnerText;
-            if(date.CompareTo(datetime) > 0)
+            if(DateTime.Compare(datetime, date) < 0)
             {
                 newThreadmark(_title, _link, date);
             }

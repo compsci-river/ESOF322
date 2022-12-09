@@ -89,7 +89,7 @@ public class Manager : MonoBehaviour
         Display();
     }
 
-    public void AddThread(string rssLink)
+    public bool AddThread(string rssLink)
     {
         bool exists = false;
         foreach (Thread thread in threads)
@@ -102,9 +102,19 @@ public class Manager : MonoBehaviour
         }
         if (!exists)
         {
-            AddThread(new Thread(rssLink));
+            Thread temp = new Thread(rssLink);
+            if (temp.CreateThread())
+            {
+                AddThread(temp);
+            }
+            else
+            {
+                return false;
+            }
         }
         Refresh();
+
+        return true;
     }
 
     private void AddThread(Thread t)
@@ -173,7 +183,7 @@ public class Manager : MonoBehaviour
         {
             GameObject go = Instantiate(threadObjectPrefab, threadParentTransform);
             GameObject but = go.transform.GetChild(0).gameObject;
-            but.transform.GetChild(0).GetComponent<Text>().text = thread.getTitle();
+            but.transform.GetChild(0).GetChild(0).GetComponent<Text>().text = thread.getTitle();
             but.GetComponent<ThreadButton>().thread = thread;
             threadObjects.Add(go);
         }
@@ -213,16 +223,7 @@ public class Manager : MonoBehaviour
 
         marks = sortThreadmarks(marks);
 
-        foreach (Threadmark tm in marks)
-        {
-            GameObject go = Instantiate(threadmarkObjectPrefab, threadmarkParentTransform);
-            GameObject but = go.transform.GetChild(0).GetChild(0).gameObject;
-            but.transform.GetChild(0).GetComponent<Text>().text = tm.getTitle();
-            but.transform.GetChild(1).GetComponent<Text>().text = tm.getThread();
-            but.transform.GetChild(2).GetComponent<Text>().text = tm.getDateTime().ToString();
-            but.GetComponent<ThreadmarkButton>().threadmark = tm;
-            threadmarkObjects.Add(go);
-        }
+        DisplayUpdates(marks);
     }
 
     private void DisplayAll()
@@ -244,13 +245,22 @@ public class Manager : MonoBehaviour
 
         marks = sortThreadmarks(marks);
 
+        DisplayUpdates(marks);
+    }
+
+    private void DisplayUpdates(List<Threadmark> marks)
+    {
         foreach (Threadmark tm in marks)
         {
             GameObject go = Instantiate(threadmarkObjectPrefab, threadmarkParentTransform);
             GameObject but = go.transform.GetChild(0).GetChild(0).gameObject;
-            but.transform.GetChild(0).GetComponent<Text>().text = tm.getTitle();
-            but.transform.GetChild(1).GetComponent<Text>().text = tm.getThread();
-            but.transform.GetChild(2).GetComponent<Text>().text = tm.getDateTime().ToString();
+            if (tm.getRead() != null)
+            {
+                but.GetComponent<Image>().color = new Color32(10, 0, 0, 255);
+            }
+            but.transform.GetChild(0).GetChild(0).GetComponent<Text>().text = tm.getTitle();
+            but.transform.GetChild(1).GetChild(0).GetComponent<Text>().text = tm.getThread();
+            but.transform.GetChild(2).GetChild(0).GetComponent<Text>().text = tm.getDateTime().ToShortDateString();
             but.GetComponent<ThreadmarkButton>().threadmark = tm;
             threadmarkObjects.Add(go);
         }
@@ -366,21 +376,32 @@ public class Manager : MonoBehaviour
             Destroy(textField);
             textField = null;
         }
-        errorCheck.SetActive(false);
+    }
+
+    public void ToggleErrorCheck()
+    {
+        errorCheck.SetActive(!errorCheck.activeSelf);
     }
 
     public void SearchForNewFeed()
     {
-        errorCheck.SetActive(true);
         Text tText = textField.transform.GetChild(textField.transform.childCount - 1).gameObject.GetComponent<Text>();
         tText.horizontalOverflow = HorizontalWrapMode.Wrap;
         string text = tText.text;
         tText.horizontalOverflow = HorizontalWrapMode.Overflow;
-        errorCheck.GetComponent<Text>().text = text;
-        if (!text.Equals(""))
+        
+        bool valid = AddThread(text);
+
+        if (valid)
         {
-            AddThread(text);
+
+            ToggleAddFeed();
         }
-        ToggleAddFeed();
+        else
+        {
+            Destroy(textField);
+            textField = Instantiate(textFieldPrefab, searchPanelTransform);
+            errorCheck.SetActive(true);
+        }
     }
 }
